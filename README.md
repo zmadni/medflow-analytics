@@ -14,7 +14,7 @@ A production-quality data engineering portfolio project demonstrating modern hea
 🚧 Under Development
 
 ## Architecture
-Please refer to ARCHITECTURE.md
+*Coming soon*
 
 ## Getting Started
  *Coming soon*
