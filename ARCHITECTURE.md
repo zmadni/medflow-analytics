@@ -32,7 +32,7 @@ graph TB
     end
 
     subgraph "Storage Layer"
-        C1[MinIO S3 Storage]
+        C1[LocalStack S3 Storage]
         C2[Apache Iceberg Tables]
         C3[PostgreSQL Metadata]
     end
@@ -91,9 +91,8 @@ graph LR
         end
 
         subgraph "Storage"
-            C1[MinIO API<br/>:9000]
-            C2[MinIO Console<br/>:9001]
-            C3[PostgreSQL<br/>:5432]
+            C1[LocalStack S3<br/>:4566]
+            C2[PostgreSQL<br/>:5432]
         end
 
         subgraph "Development"
@@ -111,7 +110,7 @@ graph LR
 
     subgraph "Persistent Volumes"
         V1[postgres-db-volume]
-        V2[minio-data]
+        V2[localstack-data]
     end
 
     C3 -.-> V1
@@ -126,7 +125,7 @@ graph LR
 | **Airflow Scheduler** | apache/airflow:2.8.1 | DAG scheduling and task execution | 1 core |
 | **Spark Master** | bitnami/spark:3.5.0 | Distributed processing coordinator | 1 core |
 | **Spark Worker** | bitnami/spark:3.5.0 | Distributed processing executor | 2 cores, 2GB RAM |
-| **MinIO** | minio/minio:latest | S3-compatible object storage | Unlimited |
+| **LocalStack** | localstack/localstack:latest | AWS S3 emulation for local development | Unlimited |
 | **PostgreSQL** | postgres:15 | Metadata and analytics database | 1 core |
 | **Jupyter Lab** | jupyter/pyspark-notebook | Interactive data exploration | 1 core |
 
@@ -140,7 +139,7 @@ graph LR
 flowchart TD
     subgraph "1. Data Ingestion"
         A1[Raw Claims Data] --> A2[Data Validation]
-        A2 --> A3[Upload to MinIO<br/>claims-raw bucket]
+        A2 --> A3[Upload to LocalStack S3<br/>claims-raw bucket]
     end
 
     subgraph "2. Bronze Layer - Raw Data"
@@ -210,9 +209,8 @@ graph TB
     subgraph "Docker Network: medflow-network"
         subgraph "Web Layer"
             W1[Airflow UI :8088]
-            W2[MinIO Console :9001]
-            W3[Spark UI :8080]
-            W4[Jupyter :8888]
+            W2[Spark UI :8080]
+            W3[Jupyter :8888]
         end
 
         subgraph "Application Layer"
@@ -221,7 +219,7 @@ graph TB
         end
 
         subgraph "Data Layer"
-            DATA1[MinIO API :9000]
+            DATA1[LocalStack S3 :4566]
             DATA2[PostgreSQL :5432]
         end
     end
@@ -245,8 +243,7 @@ graph TB
 |------|---------|----------|--------|
 | 8088 | Airflow Web UI | HTTP | External |
 | 8080 | Spark Master UI | HTTP | External |
-| 9000 | MinIO API | HTTP | Internal/External |
-| 9001 | MinIO Console | HTTP | External |
+| 4566 | LocalStack S3 | HTTP | Internal/External |
 | 8888 | Jupyter Lab | HTTP | External |
 | 5432 | PostgreSQL | TCP | Internal |
 | 7077 | Spark Master | TCP | Internal |
@@ -255,10 +252,10 @@ graph TB
 
 ## Data Lake Architecture
 
-### MinIO Bucket Structure
+### LocalStack S3 Bucket Structure
 
 ```
-MinIO Object Storage
+LocalStack S3 Object Storage
 │
 ├── claims-raw/                    # Raw ingested data
 │   ├── 2024/
@@ -309,7 +306,7 @@ graph TB
         CAT[PostgreSQL Catalog<br/>Table Metadata]
     end
 
-    subgraph "MinIO Storage"
+    subgraph "LocalStack S3 Storage"
         subgraph "Metadata Layer"
             M1[Metadata Files<br/>Schema, Snapshots]
             M2[Manifest Lists]
@@ -347,7 +344,7 @@ flowchart LR
         A[Start] --> B[Extract Claims<br/>from API]
         B --> C[Validate Data<br/>Quality]
         C --> D{Data Valid?}
-        D -->|Yes| E[Upload to<br/>MinIO Raw]
+        D -->|Yes| E[Upload to<br/>LocalStack S3 Raw]
         D -->|No| F[Send Alert]
         E --> G[Trigger Spark<br/>Processing]
         G --> H[Load to Bronze<br/>Iceberg Table]
@@ -374,17 +371,17 @@ flowchart LR
 sequenceDiagram
     participant Airflow
     participant Spark
-    participant MinIO
+    participant LocalStack
     participant Iceberg
     participant dbt
     participant PostgreSQL
 
-    Airflow->>MinIO: Upload raw claims data
+    Airflow->>LocalStack: Upload raw claims data
     Airflow->>Spark: Trigger processing job
-    Spark->>MinIO: Read raw data
+    Spark->>LocalStack: Read raw data
     Spark->>Spark: Clean & transform
     Spark->>Iceberg: Write to Bronze table
-    Iceberg->>MinIO: Store data files
+    Iceberg->>LocalStack: Store data files
     Iceberg->>PostgreSQL: Update metadata
     Airflow->>dbt: Run transformations
     dbt->>Iceberg: Read Bronze tables
@@ -428,7 +425,7 @@ graph TB
 
     subgraph "Storage Layer"
         S1[Apache Iceberg 0.5.1]
-        S2[MinIO Latest]
+        S2[LocalStack Latest]
         S3[PostgreSQL 15]
     end
 
@@ -461,7 +458,7 @@ graph TB
 | **Orchestration** | Apache Airflow | Industry standard for data pipelines, visual DAG management |
 | **Processing** | Apache Spark | Distributed processing, handles large datasets, integrates with Iceberg |
 | **Table Format** | Apache Iceberg | ACID transactions, time travel, schema evolution, upserts |
-| **Object Storage** | MinIO | S3-compatible, self-hosted, cost-effective for portfolio |
+| **Object Storage** | LocalStack | AWS S3 emulation, industry-standard for local development, demonstrates cloud-native thinking |
 | **Transformations** | dbt | SQL-based transformations, version control, testing framework |
 | **Database** | PostgreSQL | Reliable, supports Iceberg catalog, familiar SQL interface |
 | **Containers** | Docker | Reproducible environments, easy deployment, isolated services |
@@ -484,14 +481,14 @@ graph TB
         subgraph "Running Containers"
             C1[Airflow<br/>2 containers]
             C2[Spark<br/>2 containers]
-            C3[MinIO<br/>1 container]
+            C3[LocalStack<br/>1 container]
             C4[PostgreSQL<br/>1 container]
             C5[Jupyter<br/>1 container]
         end
 
         subgraph "Persistent Storage"
             V1[/var/lib/docker/volumes/<br/>postgres-db-volume]
-            V2[/var/lib/docker/volumes/<br/>minio-data]
+            V2[/var/lib/docker/volumes/<br/>localstack-data]
         end
 
         D1 --> D2
@@ -529,7 +526,7 @@ Allocated to Containers:
 ├── Airflow Scheduler:     1 core,  2 GB RAM
 ├── Spark Master:          1 core,  2 GB RAM
 ├── Spark Worker:          2 cores, 2 GB RAM
-├── MinIO:                 1 core,  2 GB RAM
+├── LocalStack:            1 core,  2 GB RAM
 ├── PostgreSQL:            1 core,  2 GB RAM
 ├── Jupyter:               1 core,  2 GB RAM
 └── Reserved for OS:       2 cores, 18 GB RAM
@@ -630,13 +627,13 @@ graph TB
 
     subgraph "Authentication Layer"
         A1[Airflow Basic Auth]
-        A2[MinIO IAM]
+        A2[LocalStack IAM]
         A3[PostgreSQL Roles]
     end
 
     subgraph "Authorization Layer"
         Z1[Airflow RBAC]
-        Z2[MinIO Policies]
+        Z2[LocalStack/S3 Policies]
         Z3[Row Level Security]
     end
 
@@ -669,7 +666,7 @@ graph TB
 
 2. **Application Security**
    - Airflow authentication (basic auth)
-   - MinIO access keys
+   - LocalStack access keys (AWS-compatible)
    - PostgreSQL password authentication
 
 3. **Data Security**
@@ -765,7 +762,7 @@ Component            Current    Production
 Spark Worker Memory  2 GB       16 GB
 Spark Worker Cores   2          8
 PostgreSQL Memory    2 GB       32 GB
-MinIO Cluster        Single     Multi-node
+LocalStack Cluster   Single     AWS S3 (production)
 ```
 
 ### Future Enhancements
@@ -776,7 +773,7 @@ MinIO Cluster        Single     Multi-node
    - High availability
 
 2. **Cloud Deployment**
-   - AWS S3 instead of MinIO
+   - AWS S3 (production deployment)
    - AWS Glue/EMR instead of self-hosted Spark
    - Managed Airflow (MWAA)
 
@@ -794,7 +791,7 @@ MinIO Cluster        Single     Multi-node
 - **DAG**: Directed Acyclic Graph - Airflow workflow definition
 - **Iceberg**: Open table format for huge analytic datasets
 - **Medallion**: Bronze/Silver/Gold data architecture pattern
-- **MinIO**: S3-compatible object storage
+- **LocalStack**: AWS S3 emulation for local development
 - **dbt**: Data build tool for transformations
 - **HIPAA**: Health Insurance Portability and Accountability Act
 
@@ -803,7 +800,7 @@ MinIO Cluster        Single     Multi-node
 - [Apache Airflow Documentation](https://airflow.apache.org/docs/)
 - [Apache Spark Documentation](https://spark.apache.org/docs/latest/)
 - [Apache Iceberg Documentation](https://iceberg.apache.org/)
-- [MinIO Documentation](https://min.io/docs/)
+- [LocalStack Documentation](https://docs.localstack.cloud/)
 - [dbt Documentation](https://docs.getdbt.com/)
 
 ---
