@@ -7,17 +7,22 @@ A production-quality data engineering portfolio project demonstrating modern hea
 - **Table Format**: Apache Iceberg
 - **Transformation**: dbt
 - **Processing**: Apache Spark
-- **Orchestration**: Airflow (Docker Compose)
+- **Orchestration**: Airflow
 - **Business Domain**: Healthcare claims processing & fraud detection
 
 ## Project Status
-🚧 Under Development
+- **Docker Compose (12/16/2025)**: Implementing the first phase of docker-compose.yml (postgres db)
 
 ## Architecture
 Please refer to ARCHITECTURE.md
 
 ## Getting Started
- *Coming soon*
+The following services will be in containers:
+- Postgresql
+- Airflow
+- LocalStack
+- Apache Spark
+- Jupyter Notebook
 
 ## Author
 Zeeshan Madni
