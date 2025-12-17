@@ -1,0 +1,31 @@
+# Phase 1: PostgreSQL Only
+# Goal: Understand the simplest service - a database
+
+#version: '3.8'
+
+services:
+  # PostgreSQL - Airflow metadata & analytics database
+  postgres:
+    image: postgres:15
+    container_name: medflow-postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+volumes:
+  postgres-db-volume:
+
+networks:
+  default:
+    name: medflow-network
