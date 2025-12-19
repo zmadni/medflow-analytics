@@ -22,6 +22,54 @@ services:
       retries: 5
       start_period: 5s
     restart: always
+  
+  # Airflow Init - Initialize database (run once)
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID:-50000}:0" /sources/{logs,dags,plugins}
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _AIRFLOW_DB_UPGRADE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+    user: "0:0"
+    volumes:
+      - .:/sources
+
+  # Airflow Webserver - Web UI
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: medflow-airflow-webserver
+    command: webserver
+    ports:
+      - "8088:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+
+  # Airflow Scheduler - Executes DAGs
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: medflow-airflow-scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
 
 volumes:
   postgres-db-volume:

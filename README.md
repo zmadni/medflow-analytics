@@ -12,6 +12,7 @@ A production-quality data engineering portfolio project demonstrating modern hea
 
 ## Project Status
 - **Docker Compose (12/16/2025)**: Implementing the first phase of docker-compose.yml (postgres db)
+- **Docker Compose (12/16/2025)**: Implementing the second phase of docker-compose.yml (Airflow)
 
 ## Architecture
 Please refer to ARCHITECTURE.md
