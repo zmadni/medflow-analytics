@@ -38,9 +38,9 @@ graph TB
     end
 
     subgraph "Transformation Layer"
-        D1[dbt Models]
-        D2[Spark Jobs]
-        D3[Data Quality Checks]
+        D1[Spark SQL Jobs]
+        D2[Data Quality Checks]
+        D3[Great Expectations]
     end
 
     subgraph "Analytics Layer"
@@ -155,7 +155,7 @@ flowchart TD
     end
 
     subgraph "4. Gold Layer - Analytics"
-        C4 --> D1[dbt Transformations]
+        C4 --> D1[Spark SQL Transformations]
         D1 --> D2[Business Logic<br/>Aggregations<br/>Metrics]
         D2 --> D3[Iceberg Gold Tables]
         D3 --> D4[Schema: claims_analytics<br/>fraud_scores<br/>provider_metrics]
@@ -284,18 +284,13 @@ LocalStack S3 Object Storage
 │       ├── fraud_scores/
 │       └── provider_metrics/
 │
-├── iceberg-warehouse/             # Iceberg metadata
-│   ├── metadata/
-│   │   ├── claims_raw.metadata.json
-│   │   └── claims_clean.metadata.json
-│   └── data/
-│       ├── claims_raw/
-│       └── claims_clean/
-│
-└── dbt-artifacts/                 # dbt outputs
-    ├── manifest.json
-    ├── run_results.json
-    └── catalog.json
+└── iceberg-warehouse/             # Iceberg metadata
+    ├── metadata/
+    │   ├── claims_raw.metadata.json
+    │   └── claims_clean.metadata.json
+    └── data/
+        ├── claims_raw/
+        └── claims_clean/
 ```
 
 ### Iceberg Table Architecture
@@ -348,7 +343,7 @@ flowchart LR
         D -->|No| F[Send Alert]
         E --> G[Trigger Spark<br/>Processing]
         G --> H[Load to Bronze<br/>Iceberg Table]
-        H --> I[Run dbt<br/>Transformations]
+        H --> I[Run Spark SQL<br/>Transformations]
         I --> J[Data Quality<br/>Tests]
         J --> K{Tests Pass?}
         K -->|Yes| L[Update Gold<br/>Tables]
@@ -373,21 +368,23 @@ sequenceDiagram
     participant Spark
     participant LocalStack
     participant Iceberg
-    participant dbt
     participant PostgreSQL
 
     Airflow->>LocalStack: Upload raw claims data
-    Airflow->>Spark: Trigger processing job
+    Airflow->>Spark: Trigger Bronze load job
     Spark->>LocalStack: Read raw data
-    Spark->>Spark: Clean & transform
+    Spark->>Spark: Validate & clean
     Spark->>Iceberg: Write to Bronze table
     Iceberg->>LocalStack: Store data files
     Iceberg->>PostgreSQL: Update metadata
-    Airflow->>dbt: Run transformations
-    dbt->>Iceberg: Read Bronze tables
-    dbt->>Iceberg: Write Silver tables
-    dbt->>Iceberg: Write Gold tables
-    dbt->>PostgreSQL: Update lineage
+    Airflow->>Spark: Trigger Silver transformations
+    Spark->>Iceberg: Read Bronze tables
+    Spark->>Spark: Apply business logic
+    Spark->>Iceberg: Write Silver tables
+    Airflow->>Spark: Trigger Gold aggregations
+    Spark->>Iceberg: Read Silver tables
+    Spark->>Iceberg: Write Gold tables
+    Iceberg->>PostgreSQL: Update lineage
     Airflow->>Airflow: Mark success
 ```
 
@@ -410,8 +407,8 @@ graph TB
     end
 
     subgraph "Transformation Layer"
-        T1[dbt Core 1.7]
-        T2[Spark SQL]
+        T1[Spark SQL]
+        T2[Great Expectations]
     end
 
     subgraph "Processing Layer"
@@ -459,7 +456,8 @@ graph TB
 | **Processing** | Apache Spark | Distributed processing, handles large datasets, integrates with Iceberg |
 | **Table Format** | Apache Iceberg | ACID transactions, time travel, schema evolution, upserts |
 | **Object Storage** | LocalStack | AWS S3 emulation, industry-standard for local development, demonstrates cloud-native thinking |
-| **Transformations** | dbt | SQL-based transformations, version control, testing framework |
+| **Transformations** | Spark SQL | SQL-based transformations in Spark, native Iceberg support, scalable |
+| **Data Quality** | Great Expectations | Automated data validation, profiling, documentation |
 | **Database** | PostgreSQL | Reliable, supports Iceberg catalog, familiar SQL interface |
 | **Containers** | Docker | Reproducible environments, easy deployment, isolated services |
 | **Language** | Python 3.11 | Data science ecosystem, Airflow native, extensive libraries |
@@ -792,7 +790,8 @@ LocalStack Cluster   Single     AWS S3 (production)
 - **Iceberg**: Open table format for huge analytic datasets
 - **Medallion**: Bronze/Silver/Gold data architecture pattern
 - **LocalStack**: AWS S3 emulation for local development
-- **dbt**: Data build tool for transformations
+- **Spark SQL**: SQL engine for Apache Spark transformations
+- **Great Expectations**: Data validation and testing framework
 - **HIPAA**: Health Insurance Portability and Accountability Act
 
 ### References
@@ -801,7 +800,7 @@ LocalStack Cluster   Single     AWS S3 (production)
 - [Apache Spark Documentation](https://spark.apache.org/docs/latest/)
 - [Apache Iceberg Documentation](https://iceberg.apache.org/)
 - [LocalStack Documentation](https://docs.localstack.cloud/)
-- [dbt Documentation](https://docs.getdbt.com/)
+- [Great Expectations Documentation](https://docs.greatexpectations.io/)
 
 ---
 
