@@ -1,6 +1,6 @@
 # MedFlow Analytics
 
-A production-quality data engineering portfolio project demonstrating modern healthcare claims analytics using Apache Iceberg, dbt, Spark, Airflow, and LocalStack (AWS S3).
+A production-quality data engineering portfolio project demonstrating modern healthcare claims analytics using Apache Iceberg, Spark, Airflow, and LocalStack (AWS S3).
 
 ## Tech Stack
 - **Storage**: LocalStack (AWS S3 emulation for local development)
