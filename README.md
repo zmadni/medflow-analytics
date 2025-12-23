@@ -12,6 +12,7 @@ A production-quality data engineering portfolio project demonstrating modern hea
 ## Project Status
 - **Docker Compose (12/16/2025)**: Implementing the first phase of docker-compose.yml (postgres db)
 - **Docker Compose (12/20/2025)**: Implementing the second phase of docker-compose.yml (Airflow)
+- **Docker Compose (12/22/2025)**: Implementing the third phase of docker-compose.yml (Localstack)
 
 ## Architecture
 Please refer to ARCHITECTURE.md
@@ -22,7 +23,7 @@ The following services will be in containers:
 - Airflow
 - LocalStack
 - Apache Spark
-- Jupyter Notebook
+- Jupyter Notebook (optional)
 
 ## Author
 Zeeshan Madni
