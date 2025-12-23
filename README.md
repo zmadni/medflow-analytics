@@ -26,3 +26,8 @@ The following services will be in containers:
 
 ## Author
 Zeeshan Madni
+
+## License
+Copyright © 2024 Zeeshan Madni. All Rights Reserved.
+
+This project is made public for portfolio demonstration purposes only. No part of this repository may be reproduced, distributed, or used without prior written permission from the copyright holder.
