@@ -1,5 +1,5 @@
 # MedFlow Analytics - Main Docker Compose Configuration                                      
-# Current: PostgreSQL + Apache Airflow (Phases 1-2)
+# Current: PostgreSQL + Airflow + LocalStack + Spark
 
 #version: '3.8'
 
@@ -89,7 +89,56 @@ services:
       aws --endpoint-url=http://localstack:4566 s3 mb s3://iceberg-warehouse || true &&
       echo 'S3 buckets initialized in LocalStack'
       "
-  
+
+# Spark Master
+  spark-master:
+    image: apache/spark:3.5.0
+    container_name: medflow-spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_MASTER_PORT=7077
+      - SPARK_MASTER_WEBUI_PORT=8080
+    ports:
+      - "8081:8080"  # Web UI (using 8081 to avoid conflict with Airflow)
+      - "7077:7077"  # Master port
+    volumes:
+      - ./scripts:/opt/scripts
+      - ./data:/opt/data
+      - ./jars/iceberg:/opt/spark/jars/iceberg
+      - ./config/spark:/opt/spark/conf
+    command: >
+      /bin/bash -c "
+      export SPARK_CLASSPATH=/opt/spark/jars/iceberg/*:$$SPARK_CLASSPATH &&
+      /opt/spark/bin/spark-class org.apache.spark.deploy.master.Master
+      "
+    depends_on:
+      - localstack
+    restart: always
+
+  # Spark Worker
+  spark-worker:
+    image: apache/spark:3.5.0
+    container_name: medflow-spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_WORKER_CORES=2
+      - SPARK_WORKER_MEMORY=2g
+    depends_on:
+      - spark-master
+    volumes:
+      - ./scripts:/opt/scripts
+      - ./data:/opt/data
+      - ./jars/iceberg:/opt/spark/jars/iceberg
+      - ./config/spark:/opt/spark/conf
+    command: >
+      /bin/bash -c "
+      export SPARK_CLASSPATH=/opt/spark/jars/iceberg/*:$$SPARK_CLASSPATH &&
+      /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
+      "
+    restart: always
+
   # Airflow Init - Initialize database (run once)
   airflow-init:
     <<: *airflow-common
