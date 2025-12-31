@@ -7,6 +7,8 @@ A production-quality data engineering portfolio project demonstrating modern hea
 - **Table Format**: Apache Iceberg
 - **Processing**: Apache Spark
 - **Orchestration**: Airflow
+- **AI Interface**: Claude Sonnet 4.5 + LangChain RAG (Natural Language Queries)
+- **Frontend**: Streamlit (chat interface) + FastAPI (backend)
 - **Business Domain**: Healthcare claims processing & fraud detection
 
 ## Project Status
@@ -32,6 +34,17 @@ A production-quality data engineering portfolio project demonstrating modern hea
 - **Processing Time**: ~25-30 minutes for complete Bronze → Silver → Gold execution
 - **Tables Created**: 7 Iceberg tables (1 Bronze, 3 Silver, 3 Gold)
 
+### AI Query Interface (NEW)
+- **12/31/2025**: 🚀 **RAG Interface Architecture Complete**
+  - **Natural Language Queries**: Ask questions in plain English about claims data
+  - **Text-to-SQL Pipeline**: Claude Sonnet 4.5 converts questions to optimized SQL
+  - **Multi-Phase Evolution**: Basic RAG → Vector Store → Agentic System
+  - **Healthcare Domain**: ICD-10/CPT code understanding, medical terminology
+  - **Production Architecture**: FastAPI backend, Streamlit frontend, comprehensive validation
+  - **Documentation**: 4 architecture diagrams, complete implementation guide
+  - **Status**: Architecture and scaffolding complete, Phase 1 implementation starting
+  - **See**: `rag_interface/` directory and `rag_interface/README.md` for details
+
 ## Key Components
 
 ### Data Pipeline Scripts
@@ -54,11 +67,21 @@ A production-quality data engineering portfolio project demonstrating modern hea
 - **Spark Wrapper**: `scripts/run_spark_iceberg.sh` - Intelligent Spark job execution
 - **Docker Compose**: Multi-service orchestration (PostgreSQL, Airflow, LocalStack, Spark)
 
+### AI Query Interface
+- **RAG Backend**: `rag_interface/backend/` - FastAPI server with LLM integration
+  - Natural language to SQL conversion
+  - SQL validation and safety checks
+  - Query execution via Spark
+- **RAG Frontend**: `rag_interface/frontend/` - Streamlit chat interface
+- **Knowledge Base**: `rag_interface/schemas/` & `rag_interface/knowledge/` - Table schemas, example queries, healthcare glossary
+- **Architecture**: `rag_interface/diagrams/` - Complete multi-phase architecture documentation
+
 ### Documentation
 - **DOCKER_AIRFLOW_CHALLENGE.md** - Complete breakdown of Docker-in-Docker solution
 - **ICEBERG_SETUP.md** - Iceberg configuration and troubleshooting
 - **PIPELINE_DESIGN.md** - Medallion architecture design decisions
 - **PHASES_GUIDE.md** - Step-by-step implementation guide
+- **rag_interface/README.md** - RAG interface architecture and implementation guide
 
 ## Architecture
 Please refer to ARCHITECTURE.md for detailed system design.
