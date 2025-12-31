@@ -76,15 +76,8 @@ A production-quality data engineering portfolio project demonstrating modern hea
 - **Knowledge Base**: `rag_interface/schemas/` & `rag_interface/knowledge/` - Table schemas, example queries, healthcare glossary
 - **Architecture**: `rag_interface/diagrams/` - Complete multi-phase architecture documentation
 
-### Documentation
-- **DOCKER_AIRFLOW_CHALLENGE.md** - Complete breakdown of Docker-in-Docker solution
-- **ICEBERG_SETUP.md** - Iceberg configuration and troubleshooting
-- **PIPELINE_DESIGN.md** - Medallion architecture design decisions
-- **PHASES_GUIDE.md** - Step-by-step implementation guide
-- **rag_interface/README.md** - RAG interface architecture and implementation guide
-
 ## Architecture
-Please refer to ARCHITECTURE.md for detailed system design.
+Please refer to ARCHITECTURE.md and rag_interface/diagrams for detailed system design.
 
 ## Getting Started
 
