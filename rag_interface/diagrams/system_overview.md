@@ -450,23 +450,3 @@ docs/
 ├── ICEBERG_SETUP.md            # Iceberg configuration
 └── RAG_ARCHITECTURE.md         # AI interface design ← NEW
 ```
-
-## Next Steps
-
-1. **Complete Phase 1 RAG** (2 weeks)
-2. **Add Vector Store** (1 week)
-3. **Build React UI** (2 weeks)
-4. **Implement Agents** (2-3 weeks)
-5. **Polish & Document** (1 week)
-
-**Total: 8-9 weeks to production-ready portfolio piece**
-
----
-
-## Unique Value Proposition
-
-> "This project demonstrates the complete modern data stack: batch pipelines with Airflow + Spark + Iceberg, combined with cutting-edge AI through multi-agent RAG systems. It shows I can architect scalable data platforms AND integrate LLMs for business value. This is exactly what companies need in 2025: senior engineers who bridge data engineering and AI."
-
-🎯 **Target Role**: Senior/Staff Data Engineer with AI/ML focus
-💰 **Salary Target**: $200K+
-🚀 **Differentiator**: Full-stack data + AI expertise
