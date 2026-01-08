@@ -193,9 +193,54 @@ services:
       start_period: 30s
     restart: always
 
+  # RAG Backend - FastAPI + Claude + Spark + ChromaDB
+  rag-backend:
+    build:
+      context: ./rag_interface
+      dockerfile: docker/backend.Dockerfile
+    container_name: medflow-rag-backend
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=airflow
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - ICEBERG_WAREHOUSE=s3://iceberg-warehouse/
+      - LOCALSTACK_ENDPOINT=http://localstack:4566
+      - S3_ACCESS_KEY=test
+      - S3_SECRET_KEY=test
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./jars/iceberg:/app/jars/iceberg
+      - ./data:/app/data
+      - chromadb-data:/app/data/chromadb  # Persistent ChromaDB storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      spark-master:
+        condition: service_started
+    restart: always
+
+  # RAG Frontend - Streamlit UI
+  rag-frontend:
+    build:
+      context: ./rag_interface
+      dockerfile: docker/frontend.Dockerfile
+    container_name: medflow-rag-frontend
+    environment:
+      - RAG_API_URL=http://rag-backend:8000
+    ports:
+      - "8501:8501"
+    depends_on:
+      - rag-backend
+    restart: always
+
 volumes:
   postgres-db-volume:
   localstack-data:
+  chromadb-data:  # Persistent storage for ChromaDB vector embeddings
 
 networks:
   default:
