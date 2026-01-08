@@ -1,0 +1,289 @@
+{
+  "version": "2.0.0",
+  "description": "Categorized example queries for MedFlow Analytics RAG system with Iceberg Silver/Gold tables",
+  "categories": [
+    {
+      "category": "Basic Counts",
+      "description": "Simple count queries for claims data",
+      "icon": "\ud83d\udcca",
+      "examples": [
+        {
+          "id": 1,
+          "question": "How many claims does BlueCross have?",
+          "sql": "SELECT COUNT(*) as total_claims\nFROM iceberg.silver.claims\nWHERE payer_name = 'BlueCross'",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 2,
+          "question": "What's the total number of claims by payer?",
+          "sql": "SELECT payer_name, COUNT(*) as total_claims\nFROM iceberg.silver.claims\nGROUP BY payer_name\nORDER BY total_claims DESC",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 3,
+          "question": "How many claims were submitted in 2025?",
+          "sql": "SELECT COUNT(*) as total_claims\nFROM iceberg.silver.claims\nWHERE YEAR(claim_date) = 2025",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Financial Analysis",
+      "description": "Queries about claim amounts and financials",
+      "icon": "\ud83d\udcb0",
+      "examples": [
+        {
+          "id": 10,
+          "question": "What is the total billed amount for Aetna claims?",
+          "sql": "SELECT \n  payer_name,\n  SUM(billed_amount) as total_billed,\n  SUM(paid_amount) as total_paid,\n  COUNT(*) as claim_count\nFROM iceberg.silver.claims\nWHERE payer_name = 'Aetna'\nGROUP BY payer_name",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 11,
+          "question": "What is the average paid amount by payer?",
+          "sql": "SELECT \n  payer_name,\n  AVG(paid_amount) as avg_paid,\n  AVG(billed_amount) as avg_billed,\n  AVG(allowed_amount) as avg_allowed\nFROM iceberg.silver.claims\nGROUP BY payer_name\nORDER BY avg_paid DESC",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 12,
+          "question": "Show me high-value claims over $5,000",
+          "sql": "SELECT \n  claim_id,\n  patient_id,\n  payer_name,\n  billed_amount,\n  paid_amount,\n  claim_date,\n  claim_status\nFROM iceberg.silver.claims\nWHERE billed_amount > 5000\nORDER BY billed_amount DESC\nLIMIT 100",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 13,
+          "question": "What's the payment rate by payer?",
+          "sql": "SELECT \n  payer_name,\n  COUNT(*) as total_claims,\n  ROUND(AVG(paid_amount / NULLIF(billed_amount, 0)) * 100, 2) as avg_payment_rate\nFROM iceberg.silver.claims\nWHERE billed_amount > 0\nGROUP BY payer_name\nORDER BY avg_payment_rate DESC",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Claim Status Analysis",
+      "description": "Queries about approval, denial, and claim statuses",
+      "icon": "\u2705",
+      "examples": [
+        {
+          "id": 20,
+          "question": "How many claims were approved?",
+          "sql": "SELECT \n  claim_status,\n  COUNT(*) as claim_count\nFROM iceberg.silver.claims\nWHERE claim_status = 'Approved'\nGROUP BY claim_status",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 21,
+          "question": "What's the approval rate by payer?",
+          "sql": "SELECT \n  payer_name,\n  COUNT(*) as total_claims,\n  SUM(CASE WHEN claim_status = 'Approved' THEN 1 ELSE 0 END) as approved_claims,\n  ROUND(100.0 * SUM(CASE WHEN claim_status = 'Approved' THEN 1 ELSE 0 END) / COUNT(*), 2) as approval_rate\nFROM iceberg.silver.claims\nGROUP BY payer_name\nORDER BY approval_rate DESC",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 22,
+          "question": "Show me denied claims by payer",
+          "sql": "SELECT \n  payer_name,\n  COUNT(*) as denied_claims,\n  SUM(billed_amount) as total_denied_amount\nFROM iceberg.silver.claims\nWHERE claim_status = 'Denied'\nGROUP BY payer_name\nORDER BY denied_claims DESC",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 23,
+          "question": "Compare approval rates for Outpatient vs Inpatient claims",
+          "sql": "SELECT \n  claim_type,\n  COUNT(*) as total_claims,\n  SUM(CASE WHEN claim_status = 'Approved' THEN 1 ELSE 0 END) as approved_claims,\n  ROUND(100.0 * SUM(CASE WHEN claim_status = 'Approved' THEN 1 ELSE 0 END) / COUNT(*), 2) as approval_rate\nFROM iceberg.silver.claims\nWHERE claim_type IN ('Outpatient', 'Inpatient')\nGROUP BY claim_type\nORDER BY approval_rate DESC",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Provider Analysis",
+      "description": "Queries about provider performance and patterns",
+      "icon": "\ud83c\udfe5",
+      "examples": [
+        {
+          "id": 40,
+          "question": "Which providers have the highest claim volume?",
+          "sql": "SELECT \n  provider_id,\n  COUNT(*) as claim_count,\n  SUM(billed_amount) as total_billed,\n  AVG(billed_amount) as avg_billed\nFROM iceberg.silver.claims\nGROUP BY provider_id\nORDER BY claim_count DESC\nLIMIT 10",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 41,
+          "question": "Show me top 10 providers by approval rate",
+          "sql": "SELECT \n  provider_id,\n  total_claims,\n  approved_claims,\n  approval_rate,\n  avg_claim_amount\nFROM iceberg.gold.provider_performance_metrics\nWHERE total_claims >= 100\nORDER BY approval_rate DESC\nLIMIT 10",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.gold.provider_performance_metrics"
+          ]
+        },
+        {
+          "id": 42,
+          "question": "Which providers have submitted claims for multiple payers?",
+          "sql": "SELECT \n  provider_id,\n  COUNT(DISTINCT payer_name) as payer_count,\n  COUNT(*) as total_claims\nFROM iceberg.silver.claims\nGROUP BY provider_id\nHAVING COUNT(DISTINCT payer_name) > 1\nORDER BY payer_count DESC, total_claims DESC\nLIMIT 20",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Medical Codes Analysis",
+      "description": "Queries analyzing diagnosis and procedure codes",
+      "icon": "\ud83d\udd2c",
+      "examples": [
+        {
+          "id": 50,
+          "question": "What are the most common diagnosis codes?",
+          "sql": "SELECT \n  diagnosis_code,\n  COUNT(*) as claim_count,\n  AVG(billed_amount) as avg_billed\nFROM iceberg.silver.claims\nGROUP BY diagnosis_code\nORDER BY claim_count DESC\nLIMIT 20",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 51,
+          "question": "What are the most expensive procedure codes?",
+          "sql": "SELECT \n  procedure_code,\n  COUNT(*) as procedure_count,\n  AVG(billed_amount) as avg_billed,\n  MAX(billed_amount) as max_billed\nFROM iceberg.silver.claims\nGROUP BY procedure_code\nORDER BY avg_billed DESC\nLIMIT 20",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        },
+        {
+          "id": 52,
+          "question": "Show me diabetes-related claims (ICD-10 E11)",
+          "sql": "SELECT \n  COUNT(*) as diabetes_claims,\n  COUNT(DISTINCT patient_id) as unique_patients,\n  AVG(billed_amount) as avg_billed,\n  SUM(billed_amount) as total_billed\nFROM iceberg.silver.claims\nWHERE diagnosis_code LIKE 'E11%'",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.silver.claims"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Data Quality",
+      "description": "Queries about data quality and quarantined records",
+      "icon": "\ud83d\udd0d",
+      "examples": [
+        {
+          "id": 60,
+          "question": "How many claims are in quarantine?",
+          "sql": "SELECT \n  COUNT(*) as quarantined_claims,\n  COUNT(DISTINCT payer_name) as payers_affected\nFROM iceberg.silver.claims_quarantine",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.claims_quarantine"
+          ]
+        },
+        {
+          "id": 61,
+          "question": "What are the quarantine rejection reasons?",
+          "sql": "SELECT \n  payer_name,\n  COUNT(*) as quarantine_count,\n  MIN(rejection_timestamp) as earliest,\n  MAX(rejection_timestamp) as latest\nFROM iceberg.silver.claims_quarantine\nGROUP BY payer_name\nORDER BY quarantine_count DESC",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.silver.claims_quarantine"
+          ]
+        },
+        {
+          "id": 62,
+          "question": "Show recent processing logs",
+          "sql": "SELECT \n  processing_timestamp,\n  source_file_count,\n  records_processed,\n  records_quarantined,\n  processing_duration_seconds\nFROM iceberg.silver.processing_log\nORDER BY processing_timestamp DESC\nLIMIT 10",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.silver.processing_log"
+          ]
+        }
+      ]
+    },
+    {
+      "category": "Gold Layer Analytics",
+      "description": "Pre-aggregated metrics for fast dashboards and trends",
+      "icon": "\u26a1",
+      "examples": [
+        {
+          "id": 70,
+          "question": "Show me monthly trends for all payers",
+          "sql": "SELECT \n  year_month,\n  payer_name,\n  total_claims,\n  total_billed_amount,\n  approval_rate\nFROM iceberg.gold.claims_monthly_summary\nORDER BY year_month, payer_name",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.gold.claims_monthly_summary"
+          ]
+        },
+        {
+          "id": 71,
+          "question": "Which payer has the highest approval rate?",
+          "sql": "SELECT \n  payer_name,\n  ROUND(AVG(approval_rate), 2) as avg_approval_rate,\n  SUM(total_claims) as total_claims\nFROM iceberg.gold.claims_monthly_summary\nGROUP BY payer_name\nORDER BY avg_approval_rate DESC\nLIMIT 1",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.gold.claims_monthly_summary"
+          ]
+        },
+        {
+          "id": 72,
+          "question": "Show approval funnel breakdown by claim type",
+          "sql": "SELECT \n  claim_type,\n  SUM(total_submitted) as total_submitted,\n  SUM(approved_count) as approved,\n  SUM(denied_count) as denied,\n  SUM(pending_count) as pending,\n  ROUND(AVG(approval_rate), 2) as avg_approval_rate\nFROM iceberg.gold.claims_approval_funnel\nGROUP BY claim_type\nORDER BY total_submitted DESC",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.gold.claims_approval_funnel"
+          ]
+        },
+        {
+          "id": 73,
+          "question": "Which providers have the best approval rates?",
+          "sql": "SELECT \n  provider_id,\n  total_claims,\n  approval_rate,\n  avg_claim_amount,\n  primary_payer\nFROM iceberg.gold.provider_performance_metrics\nWHERE total_claims >= 50\nORDER BY approval_rate DESC\nLIMIT 20",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.gold.provider_performance_metrics"
+          ]
+        },
+        {
+          "id": 74,
+          "question": "Compare monthly performance: January 2026 vs December 2025",
+          "sql": "SELECT \n  payer_name,\n  SUM(CASE WHEN year_month = '2026-01' THEN total_claims ELSE 0 END) as jan_2026_claims,\n  SUM(CASE WHEN year_month = '2025-12' THEN total_claims ELSE 0 END) as dec_2025_claims,\n  SUM(CASE WHEN year_month = '2026-01' THEN total_claims ELSE 0 END) - \n  SUM(CASE WHEN year_month = '2025-12' THEN total_claims ELSE 0 END) as month_over_month_change\nFROM iceberg.gold.claims_monthly_summary\nWHERE year_month IN ('2025-12', '2026-01')\nGROUP BY payer_name\nORDER BY payer_name",
+          "complexity": "medium",
+          "tables_used": [
+            "iceberg.gold.claims_monthly_summary"
+          ]
+        },
+        {
+          "id": 75,
+          "question": "Show total reimbursement amounts by payer",
+          "sql": "SELECT \n  payer_name,\n  SUM(total_billed_amount) as total_billed,\n  SUM(total_paid_amount) as total_paid,\n  ROUND(AVG(avg_reimbursement_rate), 2) as avg_reimbursement_rate\nFROM iceberg.gold.claims_monthly_summary\nGROUP BY payer_name\nORDER BY total_paid DESC",
+          "complexity": "simple",
+          "tables_used": [
+            "iceberg.gold.claims_monthly_summary"
+          ]
+        }
+      ]
+    }
+  ]
+}
