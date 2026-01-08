@@ -1,0 +1,55 @@
+# FastAPI Backend Requirements for MedFlow RAG Interface
+# Author: Zeeshan Madni
+# Created: 2025-12-31
+
+# ============================================================================
+# Core Framework
+# ============================================================================
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+python-multipart==0.0.6
+
+# ============================================================================
+# LLM & RAG Framework
+# ============================================================================
+# Phase 1: Basic LLM integration (back to langchain for RAG future-proofing)
+# Pin httpx FIRST to prevent version conflicts
+httpx>=0.25.0,<0.28.0
+anthropic>=0.40.0
+langchain-core>=0.2.0
+langchain>=0.2.0
+langchain-anthropic>=0.1.20
+
+# Phase 2: Vector store - ACTIVE
+langchain-community>=0.2.0  # Compatible with langchain>=0.2.0
+chromadb>=0.5.0  # Vector database for schema embeddings and query history
+sentence-transformers>=3.0.0  # Embedding models for semantic search
+
+# Phase 3: Agentic framework (uncomment when needed)
+# langgraph==0.0.20
+# langsmith==0.0.83
+
+# ============================================================================
+# Data Processing
+# ============================================================================
+pyspark==3.5.0
+pandas==2.1.4
+pyarrow==15.0.0
+
+# ============================================================================
+# Database & Cache
+# ============================================================================
+psycopg2-binary==2.9.9  # PostgreSQL connector
+# redis==5.0.1  # Phase 2: Query caching
+
+# ============================================================================
+# SQL Parsing & Validation
+# ============================================================================
+sqlparse==0.4.4
+
+# ============================================================================
+# Utilities
+# ============================================================================
+python-dotenv==1.0.0
+requests==2.31.0
