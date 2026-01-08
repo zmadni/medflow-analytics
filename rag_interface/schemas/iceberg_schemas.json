@@ -1,0 +1,567 @@
+{
+  "tables": {
+    "iceberg.silver.claims": {
+      "layer": "silver",
+      "description": "Silver layer standardized claims from all payers (BlueCross, Aetna, UnitedHealth)",
+      "row_count_estimate": "100,000+",
+      "columns": {
+        "claim_id": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Unique claim identifier",
+          "example": "CLM-2024-00001"
+        },
+        "patient_id": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Patient identifier (member/subscriber ID)",
+          "example": "PAT-12345"
+        },
+        "provider_id": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Provider NPI or Tax ID",
+          "example": "1234567890"
+        },
+        "claim_date": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Date claim was received/submitted",
+          "example": "2024-06-15"
+        },
+        "service_from_date": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Service start date",
+          "example": "2024-06-10"
+        },
+        "service_to_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Service end date (null for single-day services)",
+          "example": "2024-06-12"
+        },
+        "admission_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Hospital admission date (inpatient claims only)",
+          "example": "2024-06-10"
+        },
+        "discharge_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Hospital discharge date (inpatient claims only)",
+          "example": "2024-06-15"
+        },
+        "diagnosis_code": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "ICD-10 diagnosis code",
+          "example": "E11.9 (Type 2 diabetes), I10 (Hypertension)"
+        },
+        "procedure_code": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "CPT/HCPCS procedure code",
+          "example": "99213 (Office visit), 80053 (Lab test)"
+        },
+        "billed_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": false,
+          "description": "Total amount billed by provider",
+          "example": "250.00"
+        },
+        "allowed_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "description": "Amount approved by payer (contractual allowed)",
+          "example": "200.00"
+        },
+        "paid_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "description": "Amount paid by payer to provider",
+          "example": "160.00"
+        },
+        "claim_status": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Standardized claim status: Approved, Denied, Pending, Under Review",
+          "example": "Approved"
+        },
+        "claim_type": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Type of claim service",
+          "example": "Outpatient, Inpatient, Professional, Pharmacy"
+        },
+        "payer_name": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Insurance payer name",
+          "example": "BlueCross, Aetna, UnitedHealth"
+        },
+        "source_file_path": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Original source file path from Bronze layer",
+          "example": "/opt/data/raw/claims/provider=BlueCross/..."
+        },
+        "ingestion_timestamp": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "description": "Timestamp when record was ingested to Silver",
+          "example": "2024-06-15 14:30:00"
+        },
+        "processing_date": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Date of Silver transformation processing",
+          "example": "2024-06-15"
+        }
+      },
+      "partitions": [
+        "months(claim_date)"
+      ],
+      "business_rules": {
+        "no_quarantined_records": "All records in Silver layer have passed data quality validation",
+        "standardized_status": "claim_status is one of: Approved, Denied, Pending, Under Review",
+        "valid_dates": "claim_date >= 2020-01-01 AND claim_date <= CURRENT_DATE",
+        "valid_amounts": "billed_amount >= 0, allowed_amount <= billed_amount, paid_amount <= allowed_amount",
+        "valid_medical_codes": "diagnosis_code matches ICD-10 format, procedure_code matches CPT/HCPCS format"
+      }
+    },
+    "iceberg.silver.claims_quarantine": {
+      "layer": "silver",
+      "description": "Quarantine table for claims that failed data quality validation",
+      "row_count_estimate": "Variable",
+      "columns": {
+        "claim_id": {
+          "type": "STRING",
+          "nullable": true,
+          "description": "Claim ID (may be invalid)",
+          "example": "CLM-INVALID"
+        },
+        "patient_id": {
+          "type": "STRING",
+          "nullable": true,
+          "description": "Patient ID (may be invalid or null)",
+          "example": "PAT-12345"
+        },
+        "payer_name": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Source payer name",
+          "example": "BlueCross"
+        },
+        "source_file_path": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Original source file",
+          "example": "/opt/data/..."
+        },
+        "rejection_timestamp": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "description": "When record was rejected",
+          "example": "2024-06-15 14:30:00"
+        },
+        "rejection_reasons": {
+          "type": "ARRAY<STRING>",
+          "nullable": false,
+          "description": "List of validation failures",
+          "example": "['REQUIRED_FIELD_NULL: claim_id', 'INVALID_ICD10_FORMAT']"
+        }
+      },
+      "partitions": [
+        "payer_name",
+        "days(rejection_timestamp)"
+      ],
+      "business_rules": {
+        "quarantine_purpose": "Records with ANY validation failure are quarantined",
+        "review_process": "Data quality team reviews quarantined records for correction"
+      }
+    },
+    "iceberg.gold.claims_monthly_summary": {
+      "layer": "gold",
+      "description": "Pre-aggregated monthly claims metrics by payer - optimized for trend analysis and dashboards",
+      "row_count_estimate": "24",
+      "use_cases": [
+        "Monthly trend analysis",
+        "Time-series comparisons",
+        "YoY growth metrics",
+        "Payer performance over time"
+      ],
+      "columns": {
+        "year_month": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Year-month in YYYY-MM format",
+          "example": "2024-06"
+        },
+        "payer_name": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Insurance payer name",
+          "example": "BlueCross, Aetna, UnitedHealth"
+        },
+        "total_claims": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Total number of claims submitted in the month",
+          "example": "5000"
+        },
+        "unique_patients": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of unique patients with claims",
+          "example": "3500"
+        },
+        "unique_providers": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of unique providers submitting claims",
+          "example": "250"
+        },
+        "total_billed_amount": {
+          "type": "DECIMAL(18,2)",
+          "nullable": false,
+          "description": "Total amount billed by providers",
+          "example": "1250000.00"
+        },
+        "total_allowed_amount": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total amount allowed/approved by payers",
+          "example": "1000000.00"
+        },
+        "total_paid_amount": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total amount paid to providers",
+          "example": "800000.00"
+        },
+        "avg_billed_per_claim": {
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "description": "Average billed amount per claim",
+          "example": "250.00"
+        },
+        "avg_paid_per_claim": {
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "description": "Average paid amount per claim",
+          "example": "160.00"
+        },
+        "avg_reimbursement_rate": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Average reimbursement rate (paid/billed * 100)",
+          "example": "64.00"
+        },
+        "total_write_off": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total write-off amount (billed - paid)",
+          "example": "450000.00"
+        },
+        "claims_approved": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of approved claims",
+          "example": "4200"
+        },
+        "claims_denied": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of denied claims",
+          "example": "600"
+        },
+        "claims_pending": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of pending claims",
+          "example": "200"
+        },
+        "approval_rate": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Approval rate percentage",
+          "example": "84.00"
+        },
+        "denial_rate": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Denial rate percentage",
+          "example": "12.00"
+        },
+        "last_updated_timestamp": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "description": "When this record was last updated",
+          "example": "2024-06-30 23:59:59"
+        }
+      },
+      "partitions": [
+        "year_month",
+        "payer_name"
+      ],
+      "business_rules": {
+        "granularity": "Monthly aggregation by payer",
+        "performance": "Pre-aggregated for fast queries",
+        "use_for": "Trend analysis, dashboards, monthly reports"
+      }
+    },
+    "iceberg.gold.claims_approval_funnel": {
+      "layer": "gold",
+      "description": "Claims approval funnel metrics by month, payer, and claim type - tracks claim flow through approval stages",
+      "row_count_estimate": "48",
+      "use_cases": [
+        "Approval funnel analysis",
+        "Processing efficiency metrics",
+        "Type-based performance comparison",
+        "Reimbursement rate analysis"
+      ],
+      "columns": {
+        "year_month": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Year-month in YYYY-MM format",
+          "example": "2024-06"
+        },
+        "payer_name": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Insurance payer name",
+          "example": "BlueCross"
+        },
+        "claim_type": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Type of claim",
+          "example": "Inpatient, Outpatient, Professional, Pharmacy"
+        },
+        "total_submitted": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Total claims submitted",
+          "example": "5000"
+        },
+        "approved_count": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of approved claims",
+          "example": "4200"
+        },
+        "denied_count": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of denied claims",
+          "example": "600"
+        },
+        "pending_count": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of pending claims",
+          "example": "200"
+        },
+        "approval_rate": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Approval rate percentage",
+          "example": "84.00"
+        },
+        "denial_rate": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Denial rate percentage",
+          "example": "12.00"
+        },
+        "submitted_amount": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total submitted amount",
+          "example": "1250000.00"
+        },
+        "approved_amount": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total approved amount",
+          "example": "1050000.00"
+        },
+        "denied_amount": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total denied amount",
+          "example": "150000.00"
+        },
+        "avg_processing_days": {
+          "type": "DECIMAL(5,1)",
+          "nullable": true,
+          "description": "Average days to process claim",
+          "example": "12.5"
+        },
+        "avg_reimbursement_rate_approved": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Average reimbursement rate for approved claims",
+          "example": "80.00"
+        },
+        "last_updated_timestamp": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "description": "When this record was last updated",
+          "example": "2024-06-30 23:59:59"
+        }
+      },
+      "partitions": [
+        "year_month",
+        "payer_name"
+      ],
+      "business_rules": {
+        "granularity": "Monthly aggregation by payer and claim type",
+        "performance": "Pre-aggregated funnel metrics",
+        "use_for": "Approval analysis, claim type comparison, processing efficiency"
+      }
+    },
+    "iceberg.gold.provider_performance_metrics": {
+      "layer": "gold",
+      "description": "Provider-level all-time performance metrics - summarizes each provider's complete history",
+      "row_count_estimate": "1000",
+      "use_cases": [
+        "Provider performance analysis",
+        "Network management",
+        "Fraud detection",
+        "Provider profiling"
+      ],
+      "columns": {
+        "provider_id": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Provider NPI or Tax ID",
+          "example": "1234567890"
+        },
+        "total_claims": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Total claims submitted by provider (all-time)",
+          "example": "500"
+        },
+        "first_claim_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Date of first claim submitted",
+          "example": "2023-01-15"
+        },
+        "last_claim_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Date of most recent claim",
+          "example": "2024-06-28"
+        },
+        "months_active": {
+          "type": "INT",
+          "nullable": true,
+          "description": "Number of months provider has been active",
+          "example": "18"
+        },
+        "unique_patients": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of unique patients served",
+          "example": "350"
+        },
+        "total_billed": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total amount billed",
+          "example": "125000.00"
+        },
+        "total_allowed": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total amount allowed",
+          "example": "100000.00"
+        },
+        "total_paid": {
+          "type": "DECIMAL(18,2)",
+          "nullable": true,
+          "description": "Total amount paid",
+          "example": "80000.00"
+        },
+        "avg_claim_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "description": "Average claim amount",
+          "example": "250.00"
+        },
+        "claims_approved": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of approved claims",
+          "example": "420"
+        },
+        "claims_denied": {
+          "type": "BIGINT",
+          "nullable": false,
+          "description": "Number of denied claims",
+          "example": "60"
+        },
+        "approval_rate": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Provider's approval rate percentage",
+          "example": "84.00"
+        },
+        "denial_rate": {
+          "type": "DECIMAL(5,2)",
+          "nullable": true,
+          "description": "Provider's denial rate percentage",
+          "example": "12.00"
+        },
+        "primary_payer": {
+          "type": "STRING",
+          "nullable": true,
+          "description": "Payer with most claims from this provider",
+          "example": "BlueCross"
+        },
+        "payer_count": {
+          "type": "INT",
+          "nullable": true,
+          "description": "Number of different payers worked with",
+          "example": "3"
+        },
+        "top_5_diagnosis_codes": {
+          "type": "ARRAY<STRING>",
+          "nullable": true,
+          "description": "Most common diagnosis codes",
+          "example": "['E11.9', 'I10', 'Z00.00', 'J44.1', 'M79.3']"
+        },
+        "top_5_procedure_codes": {
+          "type": "ARRAY<STRING>",
+          "nullable": true,
+          "description": "Most common procedure codes",
+          "example": "['99213', '99214', '80053', '93000', '36415']"
+        },
+        "inpatient_claims": {
+          "type": "BIGINT",
+          "nullable": true,
+          "description": "Number of inpatient claims",
+          "example": "50"
+        },
+        "outpatient_claims": {
+          "type": "BIGINT",
+          "nullable": true,
+          "description": "Number of outpatient claims",
+          "example": "450"
+        }
+      },
+      "partitions": [],
+      "business_rules": {
+        "granularity": "One record per provider (all-time summary)",
+        "performance": "Pre-aggregated provider metrics",
+        "use_for": "Provider analysis, network management, performance reviews"
+      }
+    }
+  }
+}

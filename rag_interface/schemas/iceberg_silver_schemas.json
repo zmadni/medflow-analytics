@@ -1,0 +1,181 @@
+{
+  "tables": {
+    "iceberg.silver.claims": {
+      "layer": "silver",
+      "description": "Silver layer standardized claims from all payers (BlueCross, Aetna, UnitedHealth)",
+      "row_count_estimate": "100,000+",
+      "columns": {
+        "claim_id": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Unique claim identifier",
+          "example": "CLM-2024-00001"
+        },
+        "patient_id": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Patient identifier (member/subscriber ID)",
+          "example": "PAT-12345"
+        },
+        "provider_id": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Provider NPI or Tax ID",
+          "example": "1234567890"
+        },
+        "claim_date": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Date claim was received/submitted",
+          "example": "2024-06-15"
+        },
+        "service_from_date": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Service start date",
+          "example": "2024-06-10"
+        },
+        "service_to_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Service end date (null for single-day services)",
+          "example": "2024-06-12"
+        },
+        "admission_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Hospital admission date (inpatient claims only)",
+          "example": "2024-06-10"
+        },
+        "discharge_date": {
+          "type": "DATE",
+          "nullable": true,
+          "description": "Hospital discharge date (inpatient claims only)",
+          "example": "2024-06-15"
+        },
+        "diagnosis_code": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "ICD-10 diagnosis code",
+          "example": "E11.9 (Type 2 diabetes), I10 (Hypertension)"
+        },
+        "procedure_code": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "CPT/HCPCS procedure code",
+          "example": "99213 (Office visit), 80053 (Lab test)"
+        },
+        "billed_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": false,
+          "description": "Total amount billed by provider",
+          "example": "250.00"
+        },
+        "allowed_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "description": "Amount approved by payer (contractual allowed)",
+          "example": "200.00"
+        },
+        "paid_amount": {
+          "type": "DECIMAL(10,2)",
+          "nullable": true,
+          "description": "Amount paid by payer to provider",
+          "example": "160.00"
+        },
+        "claim_status": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Standardized claim status: Approved, Denied, Pending, Under Review",
+          "example": "Approved"
+        },
+        "claim_type": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Type of claim service",
+          "example": "Outpatient, Inpatient, Professional, Pharmacy"
+        },
+        "payer_name": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Insurance payer name",
+          "example": "BlueCross, Aetna, UnitedHealth"
+        },
+        "source_file_path": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Original source file path from Bronze layer",
+          "example": "/opt/data/raw/claims/provider=BlueCross/..."
+        },
+        "ingestion_timestamp": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "description": "Timestamp when record was ingested to Silver",
+          "example": "2024-06-15 14:30:00"
+        },
+        "processing_date": {
+          "type": "DATE",
+          "nullable": false,
+          "description": "Date of Silver transformation processing",
+          "example": "2024-06-15"
+        }
+      },
+      "partitions": ["months(claim_date)"],
+      "business_rules": {
+        "no_quarantined_records": "All records in Silver layer have passed data quality validation",
+        "standardized_status": "claim_status is one of: Approved, Denied, Pending, Under Review",
+        "valid_dates": "claim_date >= 2020-01-01 AND claim_date <= CURRENT_DATE",
+        "valid_amounts": "billed_amount >= 0, allowed_amount <= billed_amount, paid_amount <= allowed_amount",
+        "valid_medical_codes": "diagnosis_code matches ICD-10 format, procedure_code matches CPT/HCPCS format"
+      }
+    },
+    "iceberg.silver.claims_quarantine": {
+      "layer": "silver",
+      "description": "Quarantine table for claims that failed data quality validation",
+      "row_count_estimate": "Variable",
+      "columns": {
+        "claim_id": {
+          "type": "STRING",
+          "nullable": true,
+          "description": "Claim ID (may be invalid)",
+          "example": "CLM-INVALID"
+        },
+        "patient_id": {
+          "type": "STRING",
+          "nullable": true,
+          "description": "Patient ID (may be invalid or null)",
+          "example": "PAT-12345"
+        },
+        "payer_name": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Source payer name",
+          "example": "BlueCross"
+        },
+        "source_file_path": {
+          "type": "STRING",
+          "nullable": false,
+          "description": "Original source file",
+          "example": "/opt/data/..."
+        },
+        "rejection_timestamp": {
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "description": "When record was rejected",
+          "example": "2024-06-15 14:30:00"
+        },
+        "rejection_reasons": {
+          "type": "ARRAY<STRING>",
+          "nullable": false,
+          "description": "List of validation failures",
+          "example": "['REQUIRED_FIELD_NULL: claim_id', 'INVALID_ICD10_FORMAT']"
+        }
+      },
+      "partitions": ["payer_name", "days(rejection_timestamp)"],
+      "business_rules": {
+        "quarantine_purpose": "Records with ANY validation failure are quarantined",
+        "review_process": "Data quality team reviews quarantined records for correction"
+      }
+    }
+  }
+}
