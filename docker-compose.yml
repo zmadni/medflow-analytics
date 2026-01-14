@@ -98,7 +98,10 @@ services:
 
 # Spark Master
   spark-master:
-    image: apache/spark:3.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    image: medflow-spark:3.5.0
     container_name: medflow-spark-master
     environment:
       - SPARK_MODE=master
@@ -124,7 +127,10 @@ services:
 
   # Spark Worker
   spark-worker:
-    image: apache/spark:3.5.0
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    image: medflow-spark:3.5.0
     container_name: medflow-spark-worker
     environment:
       - SPARK_MODE=worker
@@ -164,6 +170,24 @@ services:
     user: "0:0"
     volumes:
       - .:/sources
+
+  # Iceberg Catalog Cleanup - Runs on startup to clean stale entries
+  iceberg-cleanup:
+    image: postgres:15
+    container_name: medflow-iceberg-cleanup
+    environment:
+      - PGPASSWORD=airflow
+      - CLEAN_ICEBERG_ON_STARTUP=${CLEAN_ICEBERG_ON_STARTUP:-false}
+    volumes:
+      - ./scripts/init:/scripts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      bash -c "
+      /scripts/cleanup_iceberg_catalog.sh
+      "
+    restart: "no"
 
   # Airflow Webserver - Web UI
   airflow-webserver:
