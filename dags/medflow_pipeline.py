@@ -3,11 +3,15 @@ MedFlow Analytics - Medallion Architecture Pipeline
 Bronze → Silver → Gold healthcare claims data pipeline
 
 This DAG orchestrates the complete data flow:
-1. Bronze: Ingest raw CSV files from S3 to Iceberg
+1. Bronze: Upload CSV files to S3, then ingest to Iceberg
+   - Upload: Local filesystem → S3 bucket (claims-raw)
+   - Ingest: S3 bucket → Iceberg Bronze table
+   - Verify: Data quality checks
 2. Silver: Transform and validate data, quarantine bad records
 3. Gold: Create business-ready aggregation tables
 
 Author: MedFlow Analytics Team
+Updated: 2026-01-13 - Added automated Bronze S3 upload task
 """
 
 from airflow import DAG
@@ -51,25 +55,35 @@ dag = DAG(
 
 with TaskGroup('bronze_ingestion', dag=dag) as bronze_group:
     """
-    Bronze layer: Ingest raw CSV files from S3 to Iceberg
-    - Preserves original data format
-    - Adds metadata columns
-    - Registers files in Iceberg table
+    Bronze layer: Upload raw files to S3, then ingest to Iceberg
+    Step 1: Upload CSV files from local filesystem to S3 (NEW)
+    Step 2: Ingest raw CSV files from S3 to Iceberg
+    Step 3: Verify Bronze layer data
     """
 
+    # Step 1: Upload local CSV files to S3 bucket
+    upload_to_s3 = BashOperator(
+        task_id='upload_bronze_to_s3',
+        bash_command='docker exec medflow-spark-master python3 /opt/scripts/python/upload_bronze_to_s3.py',
+        dag=dag,
+    )
+
+    # Step 2: Ingest from S3 to Iceberg Bronze table
     run_bronze = BashOperator(
         task_id='ingest_bronze',
         bash_command='docker exec medflow-spark-master /opt/scripts/run_spark_iceberg.sh /opt/scripts/python/bronze_ingestion.py',
         dag=dag,
     )
 
+    # Step 3: Verify Bronze layer
     verify_bronze = BashOperator(
         task_id='verify_bronze',
         bash_command='docker exec medflow-spark-master /opt/scripts/run_spark_iceberg.sh /opt/scripts/python/verify_bronze.py',
         dag=dag,
     )
 
-    run_bronze >> verify_bronze
+    # Task dependencies: upload → ingest → verify
+    upload_to_s3 >> run_bronze >> verify_bronze
 
 # ----------------------------------------------------------------------------
 # Task Group 2: Silver Transformation
